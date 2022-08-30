@@ -1,6 +1,6 @@
 {
   "name": "cchs-fe",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "homepage": "cchs",
   "scripts": {
@@ -10,7 +10,7 @@
     "test:e2e": "vue-cli-service test:e2e",
     "lint": "vue-cli-service lint",
     "predeploy": "yarn build",
-    "deploy": "gh-pages -d dist" 
+    "deploy": "echo ccs.cotterslist.com > dist/CNAME && gh-pages -d dist" 
   },
   "dependencies": {
     "primeicons": "^5.0.0",
