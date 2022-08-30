@@ -1,4 +1,4 @@
-const url = `http://localhost:4000`
+const url = process.env.VUE_APP_BE_URL
 
 export const del = (id: string) => fetch(`${url}/unitcode/${id}`, {
   method: `DELETE`,
