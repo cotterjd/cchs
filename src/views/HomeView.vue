@@ -81,17 +81,26 @@
     class="full p-button-lg p-button-help"
   />
   <h2>Completed Units</h2>
-  <div v-for="savedCode in savedCodes" :key="savedCode.id" class="left-align">
-    <span>{{ savedCode.unit }}</span> &nbsp;
-    <span>{{ savedCode.codes }}</span>
-  </div>
+  <ul v-for="savedCode in savedCodes" :key="savedCode.id" class="left-align list">
+    <li class="saved-list">
+      <span>{{ savedCode.unit }}</span>
+      <span>{{ savedCode.codes }}</span>
+      <button
+        @click="onDeleteCode(savedCode)"
+        class="del-btn"
+      >
+        <i class="pi pi-trash trash-icon"></i>
+      </button>
+    </li>
+    <Divider />
+  </ul>
   <Dialog header="Other description" v-model:visible="display">
     <input-text
       type="text"
       v-model="otherDesc"
       class="full p-inputtest-lg"
     />
-  </dialog>
+  </Dialog>
 </template>
 
 <script lang="ts">
@@ -99,8 +108,9 @@ import { defineComponent } from 'vue'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
+import Divider from 'primevue/divider'
 import { unserviced, servicedWithIssues, servicedNoIssues } from '@/static/codes'
-import { listUnitCodes, saveUnitCodes } from '@/xhr'
+import { listUnitCodes, saveUnitCodes, deleteUnitCode } from '@/xhr'
 
 const logObj = (label: string, data: any) => console.log(JSON.parse(JSON.stringify(data)))
 
@@ -131,6 +141,7 @@ export default defineComponent({
     InputText,
     Button,
     Dialog,
+    Divider,
   },
   data: (): Data => ({
     greenCodes: [],
@@ -193,6 +204,12 @@ export default defineComponent({
       })
       this.saveCodes(codesToSave)
     },
+    onDeleteCode(savedCode: UnitCode) {
+      const yes = window.confirm(`Are you sure you want to delete unit code ${savedCode.unit} ${savedCode.codes}?`)
+      if (yes) {
+        deleteUnitCode(savedCode.id).then(this.getSavedCodes)
+      }
+    },
     saveCodes(codes: string[]) {
       saveUnitCodes(this.storageUser, this.unitName, codes, this.storageJob)
         .then(this.getSavedCodes)
@@ -214,5 +231,24 @@ export default defineComponent({
   }
   .left-align {
     text-align: left;
+  }
+  .list {
+    list-style: none;
+    padding-left: 0;
+  }
+  .saved-list {
+    display: grid;
+    grid-template-columns: 50px 4fr 30px;
+    font-size: 22px;
+  }
+  .trash-icon {
+    display: flex;
+    justify-content: end;
+    font-size: 25px !important;
+    color: red;
+  }
+  .del-btn {
+    background: transparent;
+    border: none;
   }
 </style>

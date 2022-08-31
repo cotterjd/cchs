@@ -1,6 +1,6 @@
 const url = process.env.VUE_APP_BE_URL
 
-export const del = (id: string) => fetch(`${url}/unitcode/${id}`, {
+export const deleteUnitCode = (id: string) => fetch(`${url}/unitcode/${id}`, {
   method: `DELETE`,
 })
 
