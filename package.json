@@ -1,20 +1,21 @@
 {
   "name": "cchs-fe",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
-  "homepage": "cchs",
   "scripts": {
-    "start": "vue-cli-service serve",
     "build": "vue-cli-service build --mode production",
     "test:unit": "vue-cli-service test:unit",
     "test:e2e": "vue-cli-service test:e2e",
     "lint": "vue-cli-service lint",
+    "deploy": "echo ccs.cotterslist.com > dist/CNAME && gh-pages -d dist",
     "predeploy": "yarn build",
-    "deploy": "echo ccs.cotterslist.com > dist/CNAME && gh-pages -d dist" 
+    "start": "vue-cli-service serve"
   },
   "dependencies": {
+    "@types/ramda": "^0.28.15",
     "primeicons": "^5.0.0",
     "primevue": "^3.16.2",
+    "ramda": "^0.28.0",
     "register-service-worker": "^1.7.2",
     "vue": "^3.2.13",
     "vue-router": "^4.0.3",
@@ -70,7 +71,9 @@
         "backtick"
       ],
       "consistent-return": 0,
-      "no-alert": 0
+      "no-alert": 0,
+      "no-return-assign": 0,
+      "@typescript-eslint/no-unused-vars": [ 1, { "args": "none" }]
     },
     "overrides": [
       {
@@ -92,5 +95,6 @@
   ],
   "jest": {
     "preset": "@vue/cli-plugin-unit-jest/presets/typescript"
-  }
+  },
+  "homepage": "cchs"
 }

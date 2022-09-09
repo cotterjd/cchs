@@ -11,8 +11,7 @@
       label="Save User Name"
       class="full p-button-lg"
     />
-    <br />
-    <br />
+    <spacer-break />
   </div>
   <div v-if="!storageJob">
     <input-text
@@ -26,8 +25,7 @@
       label="Start New Property"
       class="full p-button-lg"
     />
-    <br />
-    <br />
+    <spacer-break />
   </div>
 
   <input-text
@@ -36,8 +34,7 @@
     class="full p-inputtext-lg"
     placeholder="Unit"
   />
-  <br />
-  <br />
+  <spacer-break />
   <div v-for="code in greenCodes" :key="code">
     <Button
       @click="onAddCode(code)"
@@ -45,8 +42,7 @@
       class="full p-button-lg"
       :class="chosenCodes.includes(code) ? 'p-button-secondary' : ''"
     />
-    <br />
-    <br />
+  <spacer-break />
   </div>
   <div v-for="code in yellowCodes" :key="code">
     <Button
@@ -55,8 +51,7 @@
       class="full p-button-lg"
       :class="chosenCodes.includes(code) ? 'p-button-secondary' : 'p-button-warning'"
     />
-    <br />
-    <br />
+    <spacer-break />
   </div>
   <div v-for="code in redCodes" :key="code">
     <Button
@@ -65,42 +60,56 @@
       class="full p-button-lg"
       :class="chosenCodes.includes(code) ? 'p-button-secondary' : 'p-button-danger'"
     />
-    <br />
-    <br />
+    <spacer-break />
   </div>
   <Button
     @click="onAddCodes"
     label="Add Codes"
     class="full p-button-lg p-button-success"
   />
-  <br />
-  <br />
+  <spacer-break />
   <Button
     @click="onEndJob"
     label="End Job"
     class="full p-button-lg p-button-help"
   />
   <h2>Completed Units</h2>
-  <ul v-for="savedCode in savedCodes" :key="savedCode.id" class="left-align list">
+  <ul v-for="visibleCode in visibleCodes" :key="visibleCode.id" class="left-align list">
     <li class="saved-list">
-      <span>{{ savedCode.unit }}</span>
-      <span>{{ savedCode.codes }}</span>
+      <span>{{ visibleCode.unit }}</span>
+      <span>{{ visibleCode.codes }}</span>
+      <ProgressSpinner
+        v-if="!visibleCode.id && saving === visibleCode.unit"
+        style="height: 25px; width: 25px; margin-right: 5px;"
+      />
       <button
-        @click="onDeleteCode(savedCode)"
-        class="del-btn"
+        v-else-if="!visibleCode.id"
+        @click="onSyncCode(visibleCode)"
+        :class="`small-btn ${syncing === visibleCode.unit ? 'spin' : ''}`"
+      >
+        <i class="pi pi-sync sync-icon"></i>
+      </button>
+      <button
+        v-else
+        @click="onDeleteCode(visibleCode)"
+        class="small-btn"
       >
         <i class="pi pi-trash trash-icon"></i>
       </button>
     </li>
     <Divider />
   </ul>
-  <Dialog header="Other description" v-model:visible="display">
+  <Dialog header="Other description" v-model:visible="displayOtherDesc">
     <input-text
       type="text"
       v-model="otherDesc"
       class="full p-inputtest-lg"
     />
   </Dialog>
+    <BlockUI :blocked="loading" :full-screen="true" />
+    <div v-show="loading" class="center">
+      <ProgressSpinner />
+    </div>
 </template>
 
 <script lang="ts">
@@ -109,17 +118,19 @@ import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import Divider from 'primevue/divider'
+import ProgressSpinner from 'primevue/progressspinner'
+import BlockUI from 'primevue/blockui'
 import { listUnitCodes, saveUnitCodes, deleteUnitCode } from '@/xhr'
+import { UnitCode } from '@/types'
+import * as R from 'ramda'
+import SpacerBreak from '@/components/SpacerBreak.vue'
 import { unserviced, servicedWithIssues, servicedNoIssues } from '@/static/codes'
 
 const logObj = (label: string, data: any) => console.log(JSON.parse(JSON.stringify(data)))
 
-interface UnitCode {
-  id: string
-  unit: string
-  codes: string
-  property: string
-  user: string
+interface CreateResponse {
+  success: boolean
+  unitCode: UnitCode
 }
 interface Data {
   greenCodes: string[]
@@ -130,10 +141,14 @@ interface Data {
   storageUser: string
   storageJob: string
   savedCodes: UnitCode[]
+  visibleCodes: UnitCode[]
   unitName: string
   chosenCodes: string[]
   otherDesc: string
-  display: boolean
+  displayOtherDesc: boolean
+  syncing: string
+  loading: boolean
+  saving: string
 }
 export default defineComponent({
   name: `HomeView`,
@@ -142,6 +157,9 @@ export default defineComponent({
     Button,
     Dialog,
     Divider,
+    ProgressSpinner,
+    BlockUI,
+    SpacerBreak,
   },
   data: (): Data => ({
     greenCodes: [],
@@ -152,10 +170,14 @@ export default defineComponent({
     storageUser: ``,
     storageJob: ``,
     savedCodes: [],
+    visibleCodes: [],
     unitName: ``,
     chosenCodes: [],
     otherDesc: ``,
-    display: false,
+    displayOtherDesc: false,
+    syncing: ``,
+    loading: false,
+    saving: ``,
   }),
   async mounted() {
     this.greenCodes = servicedNoIssues
@@ -166,7 +188,11 @@ export default defineComponent({
   },
   watch: {
     async storageJob() {
-      this.getSavedCodes()
+      this.loading = true
+      this.visibleCodes = this.getStorageCodes()
+      this.getSavedCodes().then(() => {
+        this.loading = false
+      })
     },
   },
   methods: {
@@ -184,9 +210,9 @@ export default defineComponent({
       this.storageJob = ``
     },
     onAddCode(code: string) {
-      // Only suppport other desc for one code.
+      // Only support other desc for one code.
       if (code.toLowerCase().includes(`other`)) {
-        this.display = true
+        this.displayOtherDesc = true
       }
       this.chosenCodes = this.chosenCodes.includes(code)
         ? this.chosenCodes.filter((x: string) => x !== code)
@@ -196,6 +222,7 @@ export default defineComponent({
       if (!this.storageUser) return alert(`Please add your user.`)
       if (!this.storageJob) return alert(`Please add a job.`)
       if (!this.unitName) return alert(`Please add unit.`)
+      this.saving = this.unitName
       const codesToSave = this.chosenCodes.map((code: string) => {
         if (code.toLowerCase().includes(`other`)) return `${code} ${this.otherDesc}`
         return code
@@ -205,20 +232,66 @@ export default defineComponent({
     onDeleteCode(savedCode: UnitCode) {
       const yes = window.confirm(`Are you sure you want to delete unit code ${savedCode.unit} ${savedCode.codes}?`)
       if (yes) {
-        deleteUnitCode(savedCode.id).then(this.getSavedCodes)
+        deleteUnitCode(savedCode.id as string).then(this.removeUnitCode)
       }
     },
+    onSyncCode(code: UnitCode) {
+      this.syncing = code.unit
+      const cb = (_: void | CreateResponse) => this.syncing = ``
+      saveUnitCodes(code)
+        .then(cb)
+        .then(this.getSavedCodes)
+        .catch(cb)
+    },
     saveCodes(codes: string[]) {
-      saveUnitCodes(this.storageUser, this.unitName, codes, this.storageJob)
+      const codeToSave = {
+        user: this.storageUser,
+        unit: this.unitName,
+        codes: codes.join(`, `),
+        property: this.storageJob,
+      }
+      this.addCodeToUI(codeToSave)
+      saveUnitCodes(codeToSave)
         .then(this.getSavedCodes)
         .then(this.resetValues)
     },
+    addCodeToUI(unitCode: UnitCode) {
+      const unsavedItems = this.getStorageCodes()
+      localStorage.setItem(this.storageJob, JSON.stringify([unitCode, ...unsavedItems]))
+      this.visibleCodes = [unitCode, ...this.visibleCodes]
+    },
     async getSavedCodes() {
-      this.savedCodes = await listUnitCodes(this.storageJob)
+      const savedCodes = await listUnitCodes(this.storageJob)
+      const unsavedCodes = this.getStorageCodes()
+      const allCodes = R.pipe(
+        (codes: UnitCode[]) => R.uniqBy(R.prop(`unit`), codes),
+        (codes: UnitCode[]) => codes.sort((a: UnitCode, b: UnitCode) => {
+          if (Number.isNaN(Number(a.unit))) return 0
+          if (Number(a.unit) - Number(b.unit) > 1) return -1
+          if (Number(a.unit) - Number(b.unit) < 1) return 1
+          return 0
+        }),
+      )([...savedCodes, ...unsavedCodes])
+      this.savedCodes = savedCodes
+      this.visibleCodes = allCodes
+    },
+    removeUnitCode(code: UnitCode) {
+      this.visibleCodes = this.visibleCodes.filter((x: UnitCode) => x.id !== code.id)
+      this.syncing = ``
+    },
+    isUnsaved(code: UnitCode) {
+      const unsavedCodes = this.getStorageCodes()
+      return unsavedCodes.some((x: UnitCode) => x.unit === code.unit)
+    },
+    getStorageCodes() {
+      return JSON.parse(localStorage.getItem(this.storageJob) || `[]`)
     },
     resetValues() {
       this.unitName = ``
       this.chosenCodes = []
+      this.syncing = ``
+      this.saving = ``
+      this.loading = false
     },
   },
 })
@@ -238,6 +311,7 @@ export default defineComponent({
     display: grid;
     grid-template-columns: 50px 4fr 30px;
     font-size: 22px;
+    grid-gap: 10px;
   }
   .trash-icon {
     display: flex;
@@ -245,8 +319,24 @@ export default defineComponent({
     font-size: 25px !important;
     color: red;
   }
-  .del-btn {
+  .small-btn {
     background: transparent;
     border: none;
+  }
+  .center {
+    position: fixed;
+    top: calc(50vh - 50px);
+    left: calc(50vw - 50px);
+  }
+  .spin {
+    animation: refresh-btn-spin infinite 2s linear;
+  }
+  @keyframes refresh-btn-spin {
+    from {
+      transform: rotate(360deg);
+    }
+    to {
+      transform: rotate(0deg);
+    }
   }
 </style>
