@@ -1,6 +1,6 @@
 {
-  "name": "cchs-fe",
-  "version": "0.2.0",
+  "name": "viola",
+  "version": "0.2.1",
   "private": true,
   "scripts": {
     "build": "vue-cli-service build --mode production",

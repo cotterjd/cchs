@@ -190,9 +190,13 @@ export default defineComponent({
     async storageJob() {
       this.loading = true
       this.visibleCodes = this.getStorageCodes()
-      this.getSavedCodes().then(() => {
-        this.loading = false
-      })
+      this.getSavedCodes()
+        .then(() => {
+          this.loading = false
+        })
+        .catch(() => {
+          this.loading = false
+        })
     },
   },
   methods: {
