@@ -81,26 +81,38 @@
     class="full p-button-lg p-button-help"
   />
   <h2>Completed Units</h2>
-  <ul v-for="savedCode in savedCodes" :key="savedCode.id" class="left-align list">
+  <ul v-for="visibleCode in visibleCodes" :key="visibleCode.id" class="left-align list">
     <li class="saved-list">
-      <span>{{ savedCode.unit }}</span>
-      <span>{{ savedCode.codes }}</span>
+      <span>{{ visibleCode.unit }}</span>
+      <span>{{ visibleCode.codes }}</span>
       <button
-        @click="onDeleteCode(savedCode)"
-        class="del-btn"
+        v-if="isUnsaved(visibleCode)"
+        @click="onSyncCode(visibleCode)"
+        class="small-btn spin"
+      >
+        <i class="pi pi-sync sync-icon"></i>
+      </button>
+      <button
+        v-else
+        @click="onDeleteCode(visibleCode)"
+        class="small-btn"
       >
         <i class="pi pi-trash trash-icon"></i>
       </button>
     </li>
     <Divider />
   </ul>
-  <Dialog header="Other description" v-model:visible="display">
+  <Dialog header="Other description" v-model:visible="displayOtherDesc">
     <input-text
       type="text"
       v-model="otherDesc"
       class="full p-inputtest-lg"
     />
   </Dialog>
+    <BlockUI :blocked="loading" :full-screen="true" />
+    <div v-show="loading" class="center">
+      <ProgressSpinner />
+    </div>
 </template>
 
 <script lang="ts">
@@ -109,17 +121,17 @@ import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import Divider from 'primevue/divider'
-import { unserviced, servicedWithIssues, servicedNoIssues } from '@/static/codes'
+import ProgressSpinner from 'primevue/progressspinner'
+import BlockUI from 'primevue/blockui'
 import { listUnitCodes, saveUnitCodes, deleteUnitCode } from '@/xhr'
+import { UnitCode } from '@/types'
+import { unserviced, servicedWithIssues, servicedNoIssues } from '@/static/codes'
 
 const logObj = (label: string, data: any) => console.log(JSON.parse(JSON.stringify(data)))
 
-interface UnitCode {
-  id: string
-  unit: string
-  codes: string
-  property: string
-  user: string
+interface CreateResponse {
+  success: boolean
+  unitCode: UnitCode
 }
 interface Data {
   greenCodes: string[]
@@ -130,10 +142,12 @@ interface Data {
   storageUser: string
   storageJob: string
   savedCodes: UnitCode[]
+  visibleCodes: UnitCode[]
   unitName: string
   chosenCodes: string[]
   otherDesc: string
-  display: boolean
+  displayOtherDesc: boolean
+  loading: boolean
 }
 export default defineComponent({
   name: `HomeView`,
@@ -142,6 +156,8 @@ export default defineComponent({
     Button,
     Dialog,
     Divider,
+    ProgressSpinner,
+    BlockUI,
   },
   data: (): Data => ({
     greenCodes: [],
@@ -152,10 +168,12 @@ export default defineComponent({
     storageUser: ``,
     storageJob: ``,
     savedCodes: [],
+    visibleCodes: [],
     unitName: ``,
     chosenCodes: [],
     otherDesc: ``,
-    display: false,
+    displayOtherDesc: false,
+    loading: false,
   }),
   async mounted() {
     this.greenCodes = servicedNoIssues
@@ -171,7 +189,6 @@ export default defineComponent({
   },
   methods: {
     onSaveUser() {
-      console.log(this.inputUser)
       localStorage.setItem(`user`, this.inputUser)
       this.storageUser = localStorage.getItem(`user`) || ``
     },
@@ -185,10 +202,9 @@ export default defineComponent({
       this.storageJob = ``
     },
     onAddCode(code: string) {
-      console.log(`code`, code)
-      // Only suppport other desc for one code.
+      // Only support other desc for one code.
       if (code.toLowerCase().includes(`other`)) {
-        this.display = true
+        this.displayOtherDesc = true
       }
       this.chosenCodes = this.chosenCodes.includes(code)
         ? this.chosenCodes.filter((x: string) => x !== code)
@@ -198,6 +214,7 @@ export default defineComponent({
       if (!this.storageUser) return alert(`Please add your user.`)
       if (!this.storageJob) return alert(`Please add a job.`)
       if (!this.unitName) return alert(`Please add unit.`)
+      this.loading = true
       const codesToSave = this.chosenCodes.map((code: string) => {
         if (code.toLowerCase().includes(`other`)) return `${code} ${this.otherDesc}`
         return code
@@ -207,20 +224,72 @@ export default defineComponent({
     onDeleteCode(savedCode: UnitCode) {
       const yes = window.confirm(`Are you sure you want to delete unit code ${savedCode.unit} ${savedCode.codes}?`)
       if (yes) {
-        deleteUnitCode(savedCode.id).then(this.getSavedCodes)
+        this.loading = true
+        deleteUnitCode(savedCode.id as string).then(this.removeUnitCode)
       }
     },
+    onSyncCode(code: UnitCode) {
+      this.loading = true
+      saveUnitCodes(code)
+        .then(this.maybeUpdateStorage)
+    },
+    maybeUpdateStorage(res: CreateResponse) {
+      if (res.success) {
+        const unsaved = this.getUnsavedCodes()
+        const newCodes = unsaved.filter((x: UnitCode) => x.unit !== res.unitCode.unit)
+        localStorage.setItem(this.storageJob, newCodes)
+      }
+      this.loading = false
+    },
     saveCodes(codes: string[]) {
-      saveUnitCodes(this.storageUser, this.unitName, codes, this.storageJob)
-        .then(this.getSavedCodes)
+      const codeToSave = {
+        user: this.storageUser,
+        unit: this.unitName,
+        codes: codes.join(`, `),
+        property: this.storageJob,
+      }
+      saveUnitCodes(codeToSave)
+        .then(this.addUnitCode)
         .then(this.resetValues)
     },
     async getSavedCodes() {
-      this.savedCodes = await listUnitCodes(this.storageJob)
+      const savedCodes = await listUnitCodes(this.storageJob)
+      const unsavedCodes = this.getUnsavedCodes()
+      const allCodes = [...savedCodes, ...unsavedCodes].sort((a, b) => {
+        if (Number.isNaN(Number(a.unit))) {
+          if (a.unit - b.unit > 1) return -1
+          if (a.unit - b.unit < 1) return 1
+          return 0
+        }
+        if (Number(a.unit) - Number(b.unit) > 1) return -1
+        if (Number(a.unit) - Number(b.unit) < 1) return 1
+        return 0
+      })
+      this.savedCodes = savedCodes
+      this.visibleCodes = allCodes
+    },
+    addUnitCode(res: CreateResponse) {
+      if (!res.success) {
+        const unsavedItems = this.getUnsavedCodes()
+        localStorage.setItem(this.storageJob, JSON.stringify([res.unitCode, ...unsavedItems]))
+      }
+      this.visibleCodes = [res.unitCode, ...this.visibleCodes]
+    },
+    removeUnitCode(code: UnitCode) {
+      this.visibleCodes = this.visibleCodes.filter((x: UnitCode) => x.id !== code.id)
+      this.loading = false
+    },
+    isUnsaved(code: UnitCode) {
+      const unsavedCodes = this.getUnsavedCodes()
+      return unsavedCodes.some((x: UnitCode) => x.unit === code.unit)
+    },
+    getUnsavedCodes() {
+      return JSON.parse(localStorage.getItem(this.storageJob) || `[]`)
     },
     resetValues() {
       this.unitName = ``
       this.chosenCodes = []
+      this.loading = false
     },
   },
 })
@@ -240,6 +309,7 @@ export default defineComponent({
     display: grid;
     grid-template-columns: 50px 4fr 30px;
     font-size: 22px;
+    grid-gap: 10px;
   }
   .trash-icon {
     display: flex;
@@ -247,8 +317,24 @@ export default defineComponent({
     font-size: 25px !important;
     color: red;
   }
-  .del-btn {
+  .small-btn {
     background: transparent;
     border: none;
+  }
+  .center {
+    position: absolute;
+    top: calc(50vh - 50px);
+    left: calc(50vw - 50px);
+  }
+  .spin {
+    animation: refresh-btn-spin infinite 2s linear;
+      @keyframes refresh-btn-spin {
+        from {
+          transform: rotate(360deg);
+        }
+        to {
+          transform: rotate(0deg);
+        }
+      }
   }
 </style>

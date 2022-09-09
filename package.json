@@ -1,6 +1,6 @@
 {
   "name": "cchs-fe",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "homepage": "cchs",
   "scripts": {
@@ -69,7 +69,8 @@
         1,
         "backtick"
       ],
-      "consistent-return": 0
+      "consistent-return": 0,
+      "no-alert": 0
     },
     "overrides": [
       {
