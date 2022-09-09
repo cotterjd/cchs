@@ -1,16 +1,15 @@
 {
   "name": "cchs-fe",
-  "version": "0.2.0",
+  "version": "0.1.1",
   "private": true,
-  "homepage": "cchs",
   "scripts": {
-    "start": "vue-cli-service serve",
     "build": "vue-cli-service build --mode production",
     "test:unit": "vue-cli-service test:unit",
     "test:e2e": "vue-cli-service test:e2e",
     "lint": "vue-cli-service lint",
+    "deploy": "echo ccs.cotterslist.com > dist/CNAME && gh-pages -d dist",
     "predeploy": "yarn build",
-    "deploy": "echo ccs.cotterslist.com > dist/CNAME && gh-pages -d dist" 
+    "start": "vue-cli-service serve"
   },
   "dependencies": {
     "primeicons": "^5.0.0",
@@ -92,5 +91,6 @@
   ],
   "jest": {
     "preset": "@vue/cli-plugin-unit-jest/presets/typescript"
-  }
+  },
+  "homepage": "cchs"
 }
