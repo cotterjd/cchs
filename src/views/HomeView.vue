@@ -109,8 +109,8 @@ import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import Divider from 'primevue/divider'
-import { unserviced, servicedWithIssues, servicedNoIssues } from '@/static/codes'
 import { listUnitCodes, saveUnitCodes, deleteUnitCode } from '@/xhr'
+import { unserviced, servicedWithIssues, servicedNoIssues } from '@/static/codes'
 
 const logObj = (label: string, data: any) => console.log(JSON.parse(JSON.stringify(data)))
 
@@ -171,7 +171,6 @@ export default defineComponent({
   },
   methods: {
     onSaveUser() {
-      console.log(this.inputUser)
       localStorage.setItem(`user`, this.inputUser)
       this.storageUser = localStorage.getItem(`user`) || ``
     },
@@ -185,7 +184,6 @@ export default defineComponent({
       this.storageJob = ``
     },
     onAddCode(code: string) {
-      console.log(`code`, code)
       // Only suppport other desc for one code.
       if (code.toLowerCase().includes(`other`)) {
         this.display = true
