@@ -85,15 +85,14 @@
     <li class="saved-list">
       <span>{{ visibleCode.unit }}</span>
       <span>{{ visibleCode.codes }}</span>
-      <button
+      <!--<button
         v-if="isUnsaved(visibleCode)"
         @click="onSyncCode(visibleCode)"
         class="small-btn spin"
       >
         <i class="pi pi-sync sync-icon"></i>
-      </button>
+      </button>-->
       <button
-        v-else
         @click="onDeleteCode(visibleCode)"
         class="small-btn"
       >
@@ -214,7 +213,7 @@ export default defineComponent({
       if (!this.storageUser) return alert(`Please add your user.`)
       if (!this.storageJob) return alert(`Please add a job.`)
       if (!this.unitName) return alert(`Please add unit.`)
-      this.loading = true
+      // this.loading = true
       const codesToSave = this.chosenCodes.map((code: string) => {
         if (code.toLowerCase().includes(`other`)) return `${code} ${this.otherDesc}`
         return code
@@ -224,12 +223,12 @@ export default defineComponent({
     onDeleteCode(savedCode: UnitCode) {
       const yes = window.confirm(`Are you sure you want to delete unit code ${savedCode.unit} ${savedCode.codes}?`)
       if (yes) {
-        this.loading = true
+        // this.loading = true
         deleteUnitCode(savedCode.id as string).then(this.removeUnitCode)
       }
     },
     onSyncCode(code: UnitCode) {
-      this.loading = true
+      // this.loading = true
       saveUnitCodes(code)
         .then(this.maybeUpdateStorage)
     },
@@ -322,7 +321,7 @@ export default defineComponent({
     border: none;
   }
   .center {
-    position: absolute;
+    position: fixed;
     top: calc(50vh - 50px);
     left: calc(50vw - 50px);
   }
