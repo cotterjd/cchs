@@ -1,0 +1,2 @@
+"use strict";(self["webpackChunkviola"]=self["webpackChunkviola"]||[]).push([[443],{681:function(n,r,u){u.r(r),u.d(r,{default:function(){return v}});var e=u(252);const t={class:"about"},a=(0,e._)("h1",null,"version 0.2.2",-1),s=[a];function c(n,r){return(0,e.wg)(),(0,e.iD)("div",t,s)}var i=u(744);const o={},l=(0,i.Z)(o,[["render",c]]);var v=l}}]);
+//# sourceMappingURL=about.670a4dc1.js.map
