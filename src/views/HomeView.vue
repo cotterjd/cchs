@@ -11,8 +11,7 @@
       label="Save User Name"
       class="full p-button-lg"
     />
-    <br />
-    <br />
+    <spacer-break />
   </div>
   <div v-if="!storageJob">
     <input-text
@@ -26,8 +25,7 @@
       label="Start New Property"
       class="full p-button-lg"
     />
-    <br />
-    <br />
+    <spacer-break />
   </div>
 
   <input-text
@@ -36,8 +34,7 @@
     class="full p-inputtext-lg"
     placeholder="Unit"
   />
-  <br />
-  <br />
+  <spacer-break />
   <div v-for="code in greenCodes" :key="code">
     <Button
       @click="onAddCode(code)"
@@ -45,8 +42,7 @@
       class="full p-button-lg"
       :class="chosenCodes.includes(code) ? 'p-button-secondary' : ''"
     />
-    <br />
-    <br />
+  <spacer-break />
   </div>
   <div v-for="code in yellowCodes" :key="code">
     <Button
@@ -55,8 +51,7 @@
       class="full p-button-lg"
       :class="chosenCodes.includes(code) ? 'p-button-secondary' : 'p-button-warning'"
     />
-    <br />
-    <br />
+    <spacer-break />
   </div>
   <div v-for="code in redCodes" :key="code">
     <Button
@@ -65,16 +60,14 @@
       class="full p-button-lg"
       :class="chosenCodes.includes(code) ? 'p-button-secondary' : 'p-button-danger'"
     />
-    <br />
-    <br />
+    <spacer-break />
   </div>
   <Button
     @click="onAddCodes"
     label="Add Codes"
     class="full p-button-lg p-button-success"
   />
-  <br />
-  <br />
+  <spacer-break />
   <Button
     @click="onEndJob"
     label="End Job"
@@ -85,14 +78,19 @@
     <li class="saved-list">
       <span>{{ visibleCode.unit }}</span>
       <span>{{ visibleCode.codes }}</span>
-      <!--<button
-        v-if="isUnsaved(visibleCode)"
+      <ProgressSpinner
+        v-if="!visibleCode.id && saving === visibleCode.unit"
+        style="height: 25px; width: 25px; margin-right: 5px;"
+      />
+      <button
+        v-else-if="!visibleCode.id"
         @click="onSyncCode(visibleCode)"
-        class="small-btn spin"
+        :class="`small-btn ${syncing === visibleCode.unit ? 'spin' : ''}`"
       >
         <i class="pi pi-sync sync-icon"></i>
-      </button>-->
+      </button>
       <button
+        v-else
         @click="onDeleteCode(visibleCode)"
         class="small-btn"
       >
@@ -124,6 +122,8 @@ import ProgressSpinner from 'primevue/progressspinner'
 import BlockUI from 'primevue/blockui'
 import { listUnitCodes, saveUnitCodes, deleteUnitCode } from '@/xhr'
 import { UnitCode } from '@/types'
+import * as R from 'ramda'
+import SpacerBreak from '@/components/SpacerBreak.vue'
 import { unserviced, servicedWithIssues, servicedNoIssues } from '@/static/codes'
 
 const logObj = (label: string, data: any) => console.log(JSON.parse(JSON.stringify(data)))
@@ -146,7 +146,9 @@ interface Data {
   chosenCodes: string[]
   otherDesc: string
   displayOtherDesc: boolean
+  syncing: string
   loading: boolean
+  saving: string
 }
 export default defineComponent({
   name: `HomeView`,
@@ -157,6 +159,7 @@ export default defineComponent({
     Divider,
     ProgressSpinner,
     BlockUI,
+    SpacerBreak,
   },
   data: (): Data => ({
     greenCodes: [],
@@ -172,7 +175,9 @@ export default defineComponent({
     chosenCodes: [],
     otherDesc: ``,
     displayOtherDesc: false,
+    syncing: ``,
     loading: false,
+    saving: ``,
   }),
   async mounted() {
     this.greenCodes = servicedNoIssues
@@ -183,7 +188,11 @@ export default defineComponent({
   },
   watch: {
     async storageJob() {
-      this.getSavedCodes()
+      this.loading = true
+      this.visibleCodes = this.getStorageCodes()
+      this.getSavedCodes().then(() => {
+        this.loading = false
+      })
     },
   },
   methods: {
@@ -213,7 +222,7 @@ export default defineComponent({
       if (!this.storageUser) return alert(`Please add your user.`)
       if (!this.storageJob) return alert(`Please add a job.`)
       if (!this.unitName) return alert(`Please add unit.`)
-      // this.loading = true
+      this.saving = this.unitName
       const codesToSave = this.chosenCodes.map((code: string) => {
         if (code.toLowerCase().includes(`other`)) return `${code} ${this.otherDesc}`
         return code
@@ -223,22 +232,16 @@ export default defineComponent({
     onDeleteCode(savedCode: UnitCode) {
       const yes = window.confirm(`Are you sure you want to delete unit code ${savedCode.unit} ${savedCode.codes}?`)
       if (yes) {
-        // this.loading = true
         deleteUnitCode(savedCode.id as string).then(this.removeUnitCode)
       }
     },
     onSyncCode(code: UnitCode) {
-      // this.loading = true
+      this.syncing = code.unit
+      const cb = (_: void | CreateResponse) => this.syncing = ``
       saveUnitCodes(code)
-        .then(this.maybeUpdateStorage)
-    },
-    maybeUpdateStorage(res: CreateResponse) {
-      if (res.success) {
-        const unsaved = this.getUnsavedCodes()
-        const newCodes = unsaved.filter((x: UnitCode) => x.unit !== res.unitCode.unit)
-        localStorage.setItem(this.storageJob, newCodes)
-      }
-      this.loading = false
+        .then(cb)
+        .then(this.getSavedCodes)
+        .catch(cb)
     },
     saveCodes(codes: string[]) {
       const codeToSave = {
@@ -247,47 +250,47 @@ export default defineComponent({
         codes: codes.join(`, `),
         property: this.storageJob,
       }
+      this.addCodeToUI(codeToSave)
       saveUnitCodes(codeToSave)
-        .then(this.addUnitCode)
+        .then(this.getSavedCodes)
         .then(this.resetValues)
+    },
+    addCodeToUI(unitCode: UnitCode) {
+      const unsavedItems = this.getStorageCodes()
+      localStorage.setItem(this.storageJob, JSON.stringify([unitCode, ...unsavedItems]))
+      this.visibleCodes = [unitCode, ...this.visibleCodes]
     },
     async getSavedCodes() {
       const savedCodes = await listUnitCodes(this.storageJob)
-      const unsavedCodes = this.getUnsavedCodes()
-      const allCodes = [...savedCodes, ...unsavedCodes].sort((a, b) => {
-        if (Number.isNaN(Number(a.unit))) {
-          if (a.unit - b.unit > 1) return -1
-          if (a.unit - b.unit < 1) return 1
+      const unsavedCodes = this.getStorageCodes()
+      const allCodes = R.pipe(
+        (codes: UnitCode[]) => R.uniqBy(R.prop(`unit`), codes),
+        (codes: UnitCode[]) => codes.sort((a: UnitCode, b: UnitCode) => {
+          if (Number.isNaN(Number(a.unit))) return 0
+          if (Number(a.unit) - Number(b.unit) > 1) return -1
+          if (Number(a.unit) - Number(b.unit) < 1) return 1
           return 0
-        }
-        if (Number(a.unit) - Number(b.unit) > 1) return -1
-        if (Number(a.unit) - Number(b.unit) < 1) return 1
-        return 0
-      })
+        }),
+      )([...savedCodes, ...unsavedCodes])
       this.savedCodes = savedCodes
       this.visibleCodes = allCodes
     },
-    addUnitCode(res: CreateResponse) {
-      if (!res.success) {
-        const unsavedItems = this.getUnsavedCodes()
-        localStorage.setItem(this.storageJob, JSON.stringify([res.unitCode, ...unsavedItems]))
-      }
-      this.visibleCodes = [res.unitCode, ...this.visibleCodes]
-    },
     removeUnitCode(code: UnitCode) {
       this.visibleCodes = this.visibleCodes.filter((x: UnitCode) => x.id !== code.id)
-      this.loading = false
+      this.syncing = ``
     },
     isUnsaved(code: UnitCode) {
-      const unsavedCodes = this.getUnsavedCodes()
+      const unsavedCodes = this.getStorageCodes()
       return unsavedCodes.some((x: UnitCode) => x.unit === code.unit)
     },
-    getUnsavedCodes() {
+    getStorageCodes() {
       return JSON.parse(localStorage.getItem(this.storageJob) || `[]`)
     },
     resetValues() {
       this.unitName = ``
       this.chosenCodes = []
+      this.syncing = ``
+      this.saving = ``
       this.loading = false
     },
   },
@@ -327,13 +330,13 @@ export default defineComponent({
   }
   .spin {
     animation: refresh-btn-spin infinite 2s linear;
-      @keyframes refresh-btn-spin {
-        from {
-          transform: rotate(360deg);
-        }
-        to {
-          transform: rotate(0deg);
-        }
-      }
+  }
+  @keyframes refresh-btn-spin {
+    from {
+      transform: rotate(360deg);
+    }
+    to {
+      transform: rotate(0deg);
+    }
   }
 </style>
