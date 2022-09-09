@@ -258,6 +258,7 @@ export default defineComponent({
       saveUnitCodes(codeToSave)
         .then(this.getSavedCodes)
         .then(this.resetValues)
+        .catch(this.resetValues)
     },
     addCodeToUI(unitCode: UnitCode) {
       const unsavedItems = this.getStorageCodes()
