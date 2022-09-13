@@ -73,7 +73,13 @@
     label="End Job"
     class="full p-button-lg p-button-help"
   />
-  <h2>Completed Units</h2>
+  <div class="units-header">
+    <h2>Completed Units</h2>
+    <span>
+      Offline Mode
+      <checkbox class="offline-checkbox" v-model="offlineMode" :binary="true" />
+    </span>
+  </div>
   <ul v-for="visibleCode in visibleCodes" :key="visibleCode.id" class="left-align list">
     <li class="saved-list">
       <span>{{ visibleCode.unit }}</span>
@@ -120,6 +126,7 @@ import Dialog from 'primevue/dialog'
 import Divider from 'primevue/divider'
 import ProgressSpinner from 'primevue/progressspinner'
 import BlockUI from 'primevue/blockui'
+import Checkbox from 'primevue/checkbox'
 import { listUnitCodes, saveUnitCodes, deleteUnitCode } from '@/xhr'
 import { UnitCode } from '@/types'
 import * as R from 'ramda'
@@ -149,6 +156,7 @@ interface Data {
   syncing: string
   loading: boolean
   saving: string
+  offlineMode: boolean
 }
 export default defineComponent({
   name: `HomeView`,
@@ -160,6 +168,7 @@ export default defineComponent({
     ProgressSpinner,
     BlockUI,
     SpacerBreak,
+    Checkbox,
   },
   data: (): Data => ({
     greenCodes: [],
@@ -178,6 +187,7 @@ export default defineComponent({
     syncing: ``,
     loading: false,
     saving: ``,
+    offlineMode: false,
   }),
   async mounted() {
     this.greenCodes = servicedNoIssues
@@ -226,7 +236,6 @@ export default defineComponent({
       if (!this.storageUser) return alert(`Please add your user.`)
       if (!this.storageJob) return alert(`Please add a job.`)
       if (!this.unitName) return alert(`Please add unit.`)
-      this.saving = this.unitName
       const codesToSave = this.chosenCodes.map((code: string) => {
         if (code.toLowerCase().includes(`other`)) return `${code} ${this.otherDesc}`
         return code
@@ -236,10 +245,15 @@ export default defineComponent({
     onDeleteCode(savedCode: UnitCode) {
       const yes = window.confirm(`Are you sure you want to delete unit code ${savedCode.unit} ${savedCode.codes}?`)
       if (yes) {
-        deleteUnitCode(savedCode.id as string).then(this.removeUnitCode)
+        if (this.offlineMode) {
+          this.removeUnitCode(savedCode)
+        } else {
+          deleteUnitCode(savedCode.id as string).then(this.removeUnitCode)
+        }
       }
     },
     onSyncCode(code: UnitCode) {
+      if (this.offlineMode) return alert(`Cannot sync in offline mode.`)
       this.syncing = code.unit
       const cb = (_: void | CreateResponse) => this.syncing = ``
       saveUnitCodes(code)
@@ -255,10 +269,13 @@ export default defineComponent({
         property: this.storageJob,
       }
       this.addCodeToUI(codeToSave)
-      saveUnitCodes(codeToSave)
-        .then(this.getSavedCodes)
-        .then(this.resetValues)
-        .catch(this.resetValues)
+      if (!this.offlineMode) {
+        this.saving = this.unitName
+        saveUnitCodes(codeToSave)
+          .then(this.getSavedCodes)
+          .then(this.resetValues)
+          .catch(this.resetValues)
+      }
     },
     addCodeToUI(unitCode: UnitCode) {
       const unsavedItems = this.getStorageCodes()
@@ -266,7 +283,7 @@ export default defineComponent({
       this.visibleCodes = [unitCode, ...this.visibleCodes]
     },
     async getSavedCodes() {
-      const savedCodes = await listUnitCodes(this.storageJob)
+      const savedCodes = this.offlineMode ? [] : await listUnitCodes(this.storageJob)
       const unsavedCodes = this.getStorageCodes()
       const allCodes = R.pipe(
         (codes: UnitCode[]) => R.uniqBy(R.prop(`unit`), codes),
@@ -335,6 +352,14 @@ export default defineComponent({
   }
   .spin {
     animation: refresh-btn-spin infinite 2s linear;
+  }
+  .units-header {
+    display: flex;
+    justify-content: space-between;
+    margin: 0 20px;
+  }
+  .offline-checkbox {
+    margin-top: 20px;
   }
   @keyframes refresh-btn-spin {
     from {

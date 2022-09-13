@@ -6,8 +6,11 @@ export const deleteUnitCode = (id: string) => fetch(`${url}/unitcode/${id}`, {
   method: `DELETE`,
 }).then((r) => r.json())
 
-export const listUnitCodes = (job: string) => fetch(`${url}/unitcodes?job=${encodeURIComponent(job)}`)
-  .then((r) => r.json())
+export const listUnitCodes = (job: string) => {
+  if (!job) return Promise.resolve([])
+  return fetch(`${url}/unitcodes?job=${encodeURIComponent(job)}`)
+    .then((r) => r.json())
+}
 
 export const saveUnitCodes = (unitCode: UnitCode) => fetch(`${url}/unitcode`, {
   method: `POST`,
