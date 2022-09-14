@@ -44,6 +44,12 @@
     />
   <spacer-break />
   </div>
+  <Button
+    @click="onAddCodes"
+    label="Add Codes"
+    class="full p-button-lg p-button-success"
+  />
+  <spacer-break />
   <div v-for="code in yellowCodes" :key="code">
     <Button
       @click="onAddCode(code)"
@@ -62,12 +68,6 @@
     />
     <spacer-break />
   </div>
-  <Button
-    @click="onAddCodes"
-    label="Add Codes"
-    class="full p-button-lg p-button-success"
-  />
-  <spacer-break />
   <Button
     @click="onEndJob"
     label="End Job"
@@ -110,6 +110,12 @@
       type="text"
       v-model="otherDesc"
       class="full p-inputtest-lg"
+    />
+    <spacer-break />
+    <Button
+      @click="displayOtherDesc = false"
+      label="Save"
+      class="full p-button-lg"
     />
   </Dialog>
     <BlockUI :blocked="loading" :full-screen="true" />
@@ -225,7 +231,7 @@ export default defineComponent({
     },
     onAddCode(code: string) {
       // Only support other desc for one code.
-      if (code.toLowerCase().includes(`other`)) {
+      if (code.toLowerCase().includes(`other`) && !this.chosenCodes.includes(code)) {
         this.displayOtherDesc = true
       }
       this.chosenCodes = this.chosenCodes.includes(code)
@@ -288,12 +294,14 @@ export default defineComponent({
       const allCodes = R.pipe(
         (codes: UnitCode[]) => R.uniqBy(R.prop(`unit`), codes),
         (codes: UnitCode[]) => codes.sort((a: UnitCode, b: UnitCode) => {
-          if (Number.isNaN(Number(a.unit))) return 0
-          if (Number(a.unit) - Number(b.unit) > 1) return -1
-          if (Number(a.unit) - Number(b.unit) < 1) return 1
+          if (!a.createdAt || !b.createdAt) return 0
+          const aDate = (new Date(a.createdAt)).getTime()
+          const bDate = (new Date(b.createdAt)).getTime()
+          if (aDate - bDate > 1) return -1
+          if (aDate - bDate < 1) return 1
           return 0
         }),
-      )([...savedCodes, ...unsavedCodes])
+      )([...unsavedCodes, ...savedCodes])
       this.savedCodes = savedCodes
       this.visibleCodes = allCodes
     },
