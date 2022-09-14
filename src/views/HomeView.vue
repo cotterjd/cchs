@@ -292,7 +292,6 @@ export default defineComponent({
       const savedCodes = this.offlineMode ? [] : await listUnitCodes(this.storageJob)
       const unsavedCodes = this.getStorageCodes()
       const allCodes = R.pipe(
-        (codes: UnitCode[]) => R.uniqBy(R.prop(`unit`), codes),
         (codes: UnitCode[]) => codes.sort((a: UnitCode, b: UnitCode) => {
           if (!a.createdAt || !b.createdAt) return 0
           const aDate = (new Date(a.createdAt)).getTime()
@@ -301,6 +300,7 @@ export default defineComponent({
           if (aDate - bDate < 1) return 1
           return 0
         }),
+        (codes: UnitCode[]) => R.uniqBy(R.prop(`unit`), codes),
       )([...unsavedCodes, ...savedCodes])
       this.savedCodes = savedCodes
       this.visibleCodes = allCodes
