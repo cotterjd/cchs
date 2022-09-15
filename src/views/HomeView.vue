@@ -300,6 +300,11 @@ export default defineComponent({
           if (aDate - bDate < 1) return 1
           return 0
         }),
+        (codes: UnitCode[]) => R.groupBy(R.prop(`unit`), codes),
+        (codeObj: Record<string, UnitCode[]>) => Object.keys(codeObj).map((key: string) => {
+          const dups = codeObj[key]
+          return dups.find((x: UnitCode) => x.id) || R.head(dups) as UnitCode
+        }),
         (codes: UnitCode[]) => R.uniqBy(R.prop(`unit`), codes),
       )([...unsavedCodes, ...savedCodes])
       this.savedCodes = savedCodes
