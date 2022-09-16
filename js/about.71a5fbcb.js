@@ -1,0 +1,2 @@
+"use strict";(self["webpackChunkVine"]=self["webpackChunkVine"]||[]).push([[443],{280:function(n,e,r){r.r(e),r.d(e,{default:function(){return l}});var u=r(252);const t={class:"about"},s=(0,u._)("h1",null,"version 0.4.0",-1),c=[s];function i(n,e){return(0,u.wg)(),(0,u.iD)("div",t,c)}var a=r(744);const o={},f=(0,a.Z)(o,[["render",i]]);var l=f}}]);
+//# sourceMappingURL=about.71a5fbcb.js.map
