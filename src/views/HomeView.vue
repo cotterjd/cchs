@@ -242,6 +242,7 @@ export default defineComponent({
       if (!this.storageUser) return alert(`Please add your user.`)
       if (!this.storageJob) return alert(`Please add a job.`)
       if (!this.unitName) return alert(`Please add unit.`)
+      if (this.chosenCodes.length === 1 && this.chosenCodes[0] === `Went Back`) return alert(`Must choose another code with 'Went Back'`)
       const codesToSave = this.chosenCodes.map((code: string) => {
         if (code.toLowerCase().includes(`other`)) return `${code} ${this.otherDesc}`
         return code

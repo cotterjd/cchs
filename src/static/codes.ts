@@ -8,7 +8,6 @@ export const unserviced: string[] = [
   `Skip Per Management`,
   `Minor`,
   `Denied Entry`,
-  `see css`,
   `OTHER`,
 ]
 
