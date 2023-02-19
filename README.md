@@ -1,5 +1,18 @@
 # cchs-fe
 
+### Getting Started
+
+#### Install and use node version 16
+`$ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash # install nvm`<br>
+`$ nvm install v16`<br>
+`$ nvm use v16`<br>
+
+#### Install yarn
+https://linuxize.com/post/how-to-install-yarn-on-ubuntu-20-04/
+
+#### install dependencies and start server
+`$ yarn install && yarn start`<br>
+
 ## Project setup
 ```
 yarn install
