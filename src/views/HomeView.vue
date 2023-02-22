@@ -283,7 +283,7 @@ export default defineComponent({
           .then(this.resetValues)
           .catch(this.resetValues)
       } else {
-        this.resetValues()
+        this.chosenCodes = []
       }
     },
     addCodeToUI(unitCode: UnitCode) {
