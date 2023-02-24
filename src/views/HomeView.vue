@@ -105,6 +105,7 @@
     </li>
     <Divider />
   </ul>
+  <p>{{version}}</p>
   <Dialog header="Other description" v-model:visible="displayOtherDesc">
     <input-text
       type="text"
@@ -126,6 +127,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue'
+import { mapState } from 'vuex'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
@@ -195,6 +197,11 @@ export default defineComponent({
     saving: ``,
     offlineMode: false,
   }),
+  computed: {
+    ...mapState({
+      version: (state: any) => state.version,
+    }),
+  },
   async mounted() {
     this.greenCodes = servicedNoIssues
     this.yellowCodes = servicedWithIssues
@@ -225,9 +232,11 @@ export default defineComponent({
       this.storageJob = localStorage.getItem(`job`) || ``
     },
     onEndJob() {
-      localStorage.setItem(`job`, ``)
-      this.inputJob = ``
-      this.storageJob = ``
+      if (this.offlineMode) {
+        alert(`Cannot end job in Offline Mode`)
+      } else {
+        this.syncUnsavedUnits()
+      }
     },
     onAddCode(code: string) {
       // Only support other desc for one code.
@@ -281,9 +290,9 @@ export default defineComponent({
         saveUnitCodes(codeToSave)
           .then(this.getSavedCodes)
           .then(this.resetValues)
-          .catch(this.resetValues)
+          .catch((err) => alert(`Error saving unit. Please try again or contact support at 405 919 4600`))
       } else {
-        this.chosenCodes = []
+        this.resetValues()
       }
     },
     addCodeToUI(unitCode: UnitCode) {
@@ -323,6 +332,18 @@ export default defineComponent({
     },
     getStorageCodes() {
       return JSON.parse(localStorage.getItem(this.storageJob) || `[]`)
+    },
+    syncUnsavedUnits() {
+      this.loading = true
+      const unsavedCodes = this.getStorageCodes()
+      Promise.all(unsavedCodes.map(saveUnitCodes))
+        .then(() => {
+          localStorage.setItem(`job`, ``)
+          this.inputJob = ``
+          this.storageJob = ``
+        })
+        .then(this.getSavedCodes)
+        .catch((err) => alert(`Unable to end job. You have unsaved units and there was an error while trying to sync them. Try again or contact support at 405 919 4600`))
     },
     resetValues() {
       this.unitName = ``
