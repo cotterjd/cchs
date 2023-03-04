@@ -275,7 +275,10 @@ export default defineComponent({
       saveUnitCodes(code)
         .then(cb)
         .then(this.getSavedCodes)
-        .catch((err) => alert(`Error syncing unit. You may still not have a connection. Please try again or contact support at 405 919 4600`))
+        .catch((err) => {
+          alert(`Error syncing unit. You may still not have a connection. Please try again or contact support at 405 919 4600`)
+          this.syncing = ``
+        })
     },
     saveCodes(codes: string[]) {
       const codeToSave = {
