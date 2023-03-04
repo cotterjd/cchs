@@ -275,7 +275,7 @@ export default defineComponent({
       saveUnitCodes(code)
         .then(cb)
         .then(this.getSavedCodes)
-        .catch(cb)
+        .catch((err) => alert(`Error syncing unit. You may still not have a connection. Please try again or contact support at 405 919 4600`))
     },
     saveCodes(codes: string[]) {
       const codeToSave = {
@@ -290,8 +290,9 @@ export default defineComponent({
         saveUnitCodes(codeToSave)
           .then(this.getSavedCodes)
           .then(this.resetValues)
-          .catch((err) => alert(`Error saving unit. Please try again or contact support at 405 919 4600`))
+          .catch(this.resetValues) // let it fail silently, the codes can be synced later
       } else {
+        // It's in offline mode, it's already added to UI, so just reset values
         this.resetValues()
       }
     },
@@ -343,7 +344,7 @@ export default defineComponent({
           this.storageJob = ``
         })
         .then(this.getSavedCodes)
-        .catch((err) => alert(`Unable to end job. You have unsaved units and there was an error while trying to sync them. Try again or contact support at 405 919 4600`))
+        .catch((err) => alert(`Unable to end job. You have unsaved units and there was an error while trying to sync them. You may still not have a connection. Try again or contact support at 405 919 4600`))
     },
     resetValues() {
       this.unitName = ``
