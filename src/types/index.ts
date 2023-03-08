@@ -7,3 +7,11 @@ export interface UnitCode {
   createdAt?: string
   updatedAt?: string
 }
+
+export interface Bug {
+  user: string
+  job: string
+  version: string
+  desc: string
+  data: any
+}

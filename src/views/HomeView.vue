@@ -105,7 +105,10 @@
     </li>
     <Divider />
   </ul>
-  <p>{{version}}</p>
+  <p>
+    {{version}}&nbsp; &nbsp; &nbsp;
+    <i @click="displayBugForm = true" @keyup="displayBugForm = true" class="pi pi-prime"></i>
+  </p>
   <Dialog header="Other description" v-model:visible="displayOtherDesc">
     <input-text
       type="text"
@@ -119,6 +122,24 @@
       class="full p-button-lg"
     />
   </Dialog>
+  <Dialog header="Report Bug" v-model:visible="displayBugForm">
+    <p>
+      If you are experiencing a bug with the app, please include the following information:
+      actions taken, expected result, actual result, and any other relevant information.
+    </p>
+    <text-area
+      type="text"
+      v-model="bugDesc"
+      class="full p-inputtest-lg modal-height"
+      placeholder="Describe the bug"
+    />
+    <spacer-break />
+    <Button
+      @click="onSubmitBug"
+      label="Submit"
+      class="full p-button-lg"
+    />
+  </Dialog>
     <BlockUI :blocked="loading" :full-screen="true" />
     <div v-show="loading" class="center">
       <ProgressSpinner />
@@ -129,17 +150,24 @@
 import { defineComponent } from 'vue'
 import { mapState } from 'vuex'
 import InputText from 'primevue/inputtext'
+import TextArea from 'primevue/textarea'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import Divider from 'primevue/divider'
 import ProgressSpinner from 'primevue/progressspinner'
 import BlockUI from 'primevue/blockui'
 import Checkbox from 'primevue/checkbox'
-import { listUnitCodes, saveUnitCodes, deleteUnitCode } from '@/xhr'
-import { UnitCode } from '@/types'
+import {
+  listUnitCodes,
+  saveUnitCodes,
+  deleteUnitCode,
+  submitBug,
+} from '@/xhr'
+import { UnitCode, Bug } from '@/types'
 import * as R from 'ramda'
 import SpacerBreak from '@/components/SpacerBreak.vue'
 import { unserviced, servicedWithIssues, servicedNoIssues } from '@/static/codes'
+import 'primeicons/primeicons.css';
 
 const logObj = (label: string, data: any) => console.log(JSON.parse(JSON.stringify(data)))
 
@@ -147,7 +175,9 @@ interface CreateResponse {
   success: boolean
   unitCode: UnitCode
 }
-interface Data {
+export interface Data {
+  bugDesc: string
+  displayBugForm: boolean
   greenCodes: string[]
   yellowCodes: string[]
   redCodes: string[]
@@ -177,8 +207,11 @@ export default defineComponent({
     BlockUI,
     SpacerBreak,
     Checkbox,
+    TextArea,
   },
   data: (): Data => ({
+    bugDesc: ``,
+    displayBugForm: false,
     greenCodes: [],
     yellowCodes: [],
     redCodes: [],
@@ -280,6 +313,45 @@ export default defineComponent({
           this.syncing = ``
         })
     },
+    onSubmitBug() {
+      if (!this.bugDesc) return alert(`Please add a description.`)
+      if (this.offlineMode) {
+        alert(`Cannot submit bug in offline mode.`)
+      } else {
+        const bug: Bug = {
+          user: this.storageUser,
+          job: this.storageJob,
+          desc: this.bugDesc,
+          version: this.version,
+          data: {
+            greenCodes: this.greenCodes,
+            yellowCodes: this.yellowCodes,
+            redCodes: this.redCodes,
+            inputUser: this.inputUser,
+            inputJob: this.inputJob,
+            savedCodes: this.savedCodes,
+            visibleCodes: this.visibleCodes,
+            unitName: this.unitName,
+            chosenCodes: this.chosenCodes,
+            otherDesc: this.otherDesc,
+            displayOtherDesc: this.displayOtherDesc,
+            syncing: this.syncing,
+            loading: this.loading,
+            saving: this.saving,
+            offlineMode: this.offlineMode,
+          },
+        }
+        submitBug(bug)
+          .then(() => {
+            alert(`Bug submitted successfully.`)
+            this.bugDesc = ``
+            this.displayBugForm = false
+          })
+          .catch(() => {
+            alert(`Error submitting bug. Please try again or contact support at 405 919 4600`)
+          })
+      }
+    },
     saveCodes(codes: string[]) {
       const codeToSave = {
         user: this.storageUser,
@@ -362,6 +434,9 @@ export default defineComponent({
 <style>
   .full {
     width: 100%;
+  }
+  .modal-height {
+    height: 65vh;
   }
   .left-align {
     text-align: left;

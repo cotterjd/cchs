@@ -1,4 +1,4 @@
-import { UnitCode } from '@/types'
+import { UnitCode, Bug } from '@/types'
 
 const url = process.env.VUE_APP_BE_URL
 
@@ -19,3 +19,11 @@ export const saveUnitCodes = (unitCode: UnitCode) => fetch(`${url}/unitcode`, {
     'Content-Type': `application/json`,
   },
 }).then((r) => ({ success: r.status !== 500, unitCode }))
+
+export const submitBug = (bug: Bug) => fetch(`${url}/support_email`, {
+  method: `POST`,
+  body: JSON.stringify({ bug }),
+  headers: {
+    'Content-Type': `application/json`,
+  },
+}).then((r) => ({ success: r.status !== 500, bug }))
