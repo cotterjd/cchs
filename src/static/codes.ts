@@ -30,7 +30,6 @@ export const servicedWithIssues: string[] = [
   `Missing Right Refractory Panel`,
   `Missing Base Panel`,
   `Completed - Other`,
-  `Went Back`,
 ]
 
 export const servicedNoIssues: string[] = [

@@ -80,31 +80,12 @@
       <checkbox class="offline-checkbox" v-model="offlineMode" :binary="true" />
     </span>
   </div>
-  <ul v-for="visibleCode in visibleCodes" :key="visibleCode.id" class="left-align list">
-    <li class="saved-list">
-      <span>{{ visibleCode.unit }}</span>
-      <span>{{ visibleCode.codes }}</span>
-      <ProgressSpinner
-        v-if="!visibleCode.id && saving === visibleCode.unit"
-        style="height: 25px; width: 25px; margin-right: 5px;"
-      />
-      <button
-        v-else-if="!visibleCode.id"
-        @click="onSyncCode(visibleCode)"
-        :class="`small-btn ${syncing === visibleCode.unit ? 'spin' : ''}`"
-      >
-        <i class="pi pi-sync sync-icon"></i>
-      </button>
-      <button
-        v-else
-        @click="onDeleteCode(visibleCode)"
-        class="small-btn"
-      >
-        <i class="pi pi-trash trash-icon"></i>
-      </button>
-    </li>
-    <Divider />
-  </ul>
+  <saved-codes-list
+    :codes="visibleCodes"
+    :onSyncCode="onSyncCode"
+    :syncing="syncing"
+    :onDeleteCode="onDeleteCode"
+  />
   <p>
     {{version}}&nbsp; &nbsp; &nbsp;
     <i @click="displayBugForm = true" @keyup="displayBugForm = true" class="pi pi-prime"></i>
@@ -153,7 +134,6 @@ import InputText from 'primevue/inputtext'
 import TextArea from 'primevue/textarea'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
-import Divider from 'primevue/divider'
 import ProgressSpinner from 'primevue/progressspinner'
 import BlockUI from 'primevue/blockui'
 import Checkbox from 'primevue/checkbox'
@@ -166,8 +146,9 @@ import {
 import { UnitCode, Bug } from '@/types'
 import * as R from 'ramda'
 import SpacerBreak from '@/components/SpacerBreak.vue'
+import SavedCodesList from '@/components/SavedCodesList.vue'
 import { unserviced, servicedWithIssues, servicedNoIssues } from '@/static/codes'
-import 'primeicons/primeicons.css';
+import 'primeicons/primeicons.css'
 
 const logObj = (label: string, data: any) => console.log(JSON.parse(JSON.stringify(data)))
 
@@ -202,12 +183,12 @@ export default defineComponent({
     InputText,
     Button,
     Dialog,
-    Divider,
     ProgressSpinner,
     BlockUI,
     SpacerBreak,
     Checkbox,
     TextArea,
+    SavedCodesList,
   },
   data: (): Data => ({
     bugDesc: ``,
@@ -245,7 +226,7 @@ export default defineComponent({
   watch: {
     async storageJob() {
       this.loading = true
-      this.visibleCodes = this.getStorageCodes()
+      // this.visibleCodes = this.getStorageCodes()
       this.getSavedCodes()
         .then(() => {
           this.loading = false
@@ -284,11 +265,11 @@ export default defineComponent({
       if (!this.storageUser) return alert(`Please add your user.`)
       if (!this.storageJob) return alert(`Please add a job.`)
       if (!this.unitName) return alert(`Please add unit.`)
-      if (this.chosenCodes.length === 1 && this.chosenCodes[0] === `Went Back`) return alert(`Must choose another code with 'Went Back'`)
       const codesToSave = this.chosenCodes.map((code: string) => {
         if (code.toLowerCase().includes(`other`)) return `${code} ${this.otherDesc}`
         return code
       })
+      // const existingCode = this.getUnitCode(this.unitName, this.storageJob)
       this.saveCodes(codesToSave)
     },
     onDeleteCode(savedCode: UnitCode) {
@@ -304,9 +285,8 @@ export default defineComponent({
     onSyncCode(code: UnitCode) {
       if (this.offlineMode) return alert(`Cannot sync in offline mode.`)
       this.syncing = code.unit
-      const cb = (_: void | CreateResponse) => this.syncing = ``
       saveUnitCodes(code)
-        .then(cb)
+        .then((_: void | CreateResponse) => this.syncing = ``)
         .then(this.getSavedCodes)
         .catch((err) => {
           alert(`Error syncing unit. You may still not have a connection. Please try again or contact support at 405 919 4600`)
@@ -379,28 +359,33 @@ export default defineComponent({
     async getSavedCodes() {
       const savedCodes = this.offlineMode ? [] : await listUnitCodes(this.storageJob)
       const unsavedCodes = this.getStorageCodes()
-      const allCodes = R.pipe(
-        (codes: UnitCode[]) => codes.sort((a: UnitCode, b: UnitCode) => {
-          if (!a.createdAt || !b.createdAt) return 0
-          const aDate = (new Date(a.createdAt)).getTime()
-          const bDate = (new Date(b.createdAt)).getTime()
-          if (aDate - bDate > 1) return -1
-          if (aDate - bDate < 1) return 1
-          return 0
-        }),
-        (codes: UnitCode[]) => R.groupBy(R.prop(`unit`), codes),
-        (codeObj: Record<string, UnitCode[]>) => Object.keys(codeObj).map((key: string) => {
-          const dups = codeObj[key]
-          return dups.find((x: UnitCode) => x.id) || R.head(dups) as UnitCode
-        }),
-        (codes: UnitCode[]) => R.uniqBy(R.prop(`unit`), codes),
-      )([...unsavedCodes, ...savedCodes])
+      const updatedUnsavedCodes = unsavedCodes
+        .filter(c => !savedCodes.find(sc => sc.unitName === c.unitName))
+      localStorage.setItem(this.storageJob, JSON.stringify(updatedUnsavedCodes))
+      const allCodes = [...savedCodes, ...updatedUnsavedCodes].sort(this.sortByCreatedAt)
+      // R.pipe(
+      //   (codes: UnitCode[]) => codes.sort(this.sortByCreatedAt),
+      //   (codes: UnitCode[]) => R.groupBy(R.prop(`unit`), codes),
+      //   (codeObj: Record<string, UnitCode[]>) => Object.keys(codeObj).map((key: string) => {
+      //     const dups = codeObj[key]
+      //     return dups.find((x: UnitCode) => x.id) || R.head(dups) as UnitCode
+      //   }),
+      //   (codes: UnitCode[]) => R.uniqBy(R.prop(`unit`), codes),
+      // )([...unsavedCodes, ...savedCodes])
       this.savedCodes = savedCodes
       this.visibleCodes = allCodes
     },
     removeUnitCode(code: UnitCode) {
       this.visibleCodes = this.visibleCodes.filter((x: UnitCode) => x.id !== code.id)
       this.syncing = ``
+    },
+    sortByCreatedAt(a: UnitCode, b: UnitCode) {
+      if (!a.createdAt || !b.createdAt) return 0
+      const aDate = (new Date(a.createdAt)).getTime()
+      const bDate = (new Date(b.createdAt)).getTime()
+      if (aDate - bDate > 1) return -1
+      if (aDate - bDate < 1) return 1
+      return 0
     },
     isUnsaved(code: UnitCode) {
       const unsavedCodes = this.getStorageCodes()
@@ -437,19 +422,6 @@ export default defineComponent({
   }
   .modal-height {
     height: 65vh;
-  }
-  .left-align {
-    text-align: left;
-  }
-  .list {
-    list-style: none;
-    padding-left: 0;
-  }
-  .saved-list {
-    display: grid;
-    grid-template-columns: 50px 4fr 30px;
-    font-size: 22px;
-    grid-gap: 10px;
   }
   .trash-icon {
     display: flex;
