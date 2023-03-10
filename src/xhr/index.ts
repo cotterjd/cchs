@@ -12,6 +12,9 @@ export const listUnitCodes = (job: string) => {
     .then((r) => r.json())
 }
 
+export const getUnit = (unit: string, job: string) => fetch(`${url}/unitcode?unit=${encodeURIComponent(unit)}&job=${encodeURIComponent(job)}`)
+  .then((r) => r.json())
+
 export const saveUnitCodes = (unitCode: UnitCode) => fetch(`${url}/unitcode`, {
   method: `POST`,
   body: JSON.stringify(unitCode),

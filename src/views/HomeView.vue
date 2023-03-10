@@ -142,6 +142,7 @@ import {
   saveUnitCodes,
   deleteUnitCode,
   submitBug,
+  getUnit,
 } from '@/xhr'
 import { UnitCode, Bug } from '@/types'
 import * as R from 'ramda'
@@ -261,7 +262,7 @@ export default defineComponent({
         ? this.chosenCodes.filter((x: string) => x !== code)
         : [...this.chosenCodes, code]
     },
-    onAddCodes() {
+    async onAddCodes() {
       if (!this.storageUser) return alert(`Please add your user.`)
       if (!this.storageJob) return alert(`Please add a job.`)
       if (!this.unitName) return alert(`Please add unit.`)
@@ -269,9 +270,17 @@ export default defineComponent({
         if (code.toLowerCase().includes(`other`)) return `${code} ${this.otherDesc}`
         return code
       })
-      // Don't know if we want this. duplicates should stand in cases of 'went back'.
-      // const existingCode = this.getUnitCode(this.unitName, this.storageJob)
-      this.saveCodes(codesToSave)
+      const existingCode = await getUnit(this.unitName, this.storageJob)
+      if (existingCode) {
+        const yes = window.confirm(`Unit code already exists. Are you sure you want to replace it?`)
+        if (yes) {
+          // TODO: make this not have duplicated popups
+          this.onDeleteCode(existingCode)
+          this.saveCodes(codesToSave)
+        }
+      } else {
+        this.saveCodes(codesToSave)
+      }
     },
     onDeleteCode(savedCode: UnitCode) {
       if (this.offlineMode) return alert(`Cannot delete in Offline Mode.`)
