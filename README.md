@@ -1,4 +1,4 @@
-# cchs-fe
+# cchs-mobile
 
 ### Getting Started
 
@@ -12,6 +12,10 @@ https://linuxize.com/post/how-to-install-yarn-on-ubuntu-20-04/
 
 #### install dependencies and start server
 `$ yarn install && yarn start`<br>
+
+#### Deploy
+1. set environment variable VUE_APP_BE_URL in the .env.local file to the production BE url
+2. `yarn deploy`
 
 ## Project setup
 ```
