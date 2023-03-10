@@ -226,13 +226,13 @@ export default defineComponent({
   watch: {
     async storageJob() {
       this.loading = true
-      // this.visibleCodes = this.getStorageCodes()
       this.getSavedCodes()
         .then(() => {
           this.loading = false
         })
         .catch(() => {
           this.loading = false
+          this.visibleCodes = this.getStorageCodes()
         })
     },
   },
@@ -269,16 +269,25 @@ export default defineComponent({
         if (code.toLowerCase().includes(`other`)) return `${code} ${this.otherDesc}`
         return code
       })
+      // Don't know if we want this. duplicates should stand in cases of 'went back'.
       // const existingCode = this.getUnitCode(this.unitName, this.storageJob)
       this.saveCodes(codesToSave)
     },
     onDeleteCode(savedCode: UnitCode) {
+      if (this.offlineMode) return alert(`Cannot delete in Offline Mode.`)
+
+      // IDEA: this takes a long time to fail when offline.
+      // Maybe don't block UI and handle differently
+      this.loading = true
       const yes = window.confirm(`Are you sure you want to delete unit code ${savedCode.unit} ${savedCode.codes}?`)
       if (yes) {
         if (this.offlineMode) {
           this.removeUnitCode(savedCode)
         } else {
-          deleteUnitCode(savedCode.id as string).then(this.removeUnitCode)
+          deleteUnitCode(savedCode.id as string)
+            .then(this.removeUnitCode)
+            .catch(r => alert(`Unable to delete unit code. Make sure you have a connection and try again when you have a connection or call customer support at 405 919 4600`))
+            .finally(() => this.loading = false)
         }
       }
     },
@@ -289,7 +298,7 @@ export default defineComponent({
         .then((_: void | CreateResponse) => this.syncing = ``)
         .then(this.getSavedCodes)
         .catch((err) => {
-          alert(`Error syncing unit. You may still not have a connection. Please try again or contact support at 405 919 4600`)
+          alert(`Error syncing unit. You may still not have a connection. Please try again when you have a service or wifi or contact support at 405 919 4600`)
           this.syncing = ``
         })
     },
@@ -359,8 +368,10 @@ export default defineComponent({
     async getSavedCodes() {
       const savedCodes = this.offlineMode ? [] : await listUnitCodes(this.storageJob)
       const unsavedCodes = this.getStorageCodes()
+
+      // filter out unsaved codes that have saved counterparts
       const updatedUnsavedCodes = unsavedCodes
-        .filter(c => !savedCodes.find(sc => sc.unitName === c.unitName))
+        .filter(uc => !savedCodes.find(sc => sc.unit === uc.unit))
       localStorage.setItem(this.storageJob, JSON.stringify(updatedUnsavedCodes))
       const allCodes = [...savedCodes, ...updatedUnsavedCodes].sort(this.sortByCreatedAt)
       // R.pipe(
@@ -404,7 +415,7 @@ export default defineComponent({
           this.storageJob = ``
         })
         .then(this.getSavedCodes)
-        .catch((err) => alert(`Unable to end job. You have unsaved units and there was an error while trying to sync them. You may still not have a connection. Try again or contact support at 405 919 4600`))
+        .catch((err) => alert(`Unable to end job. You have unsaved units and there was an error while trying to sync them. You may still not have a connection. Try again when you have a connection or contact support at 405 919 4600`))
     },
     resetValues() {
       this.unitName = ``
