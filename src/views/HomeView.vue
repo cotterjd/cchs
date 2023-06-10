@@ -90,6 +90,8 @@
     {{version}}&nbsp; &nbsp; &nbsp;
     <i @click="displayBugForm = true" @keyup="displayBugForm = true" class="pi pi-prime"></i>
   </p>
+
+  <!-- Dialogs -->
   <Dialog header="Other description" v-model:visible="displayOtherDesc">
     <input-text
       type="text"
@@ -427,13 +429,7 @@ export default defineComponent({
         })
         .then(this.getSavedCodes)
         .then(_ => generateReport(job))
-        .catch((err) => alert(`
-          Unable to end job.
-          You have unsaved units and there was an error while trying to sync them.
-          You may still not have a connection.
-          Try again or contact support at 405 919 4600.
-          Or submit a bug using the icon at the bottom of the screen next to the version number
-        `))
+        .catch((err) => alert(`Error ending job. Please try again or contact support at 405 919 4600`))
     },
     resetValues() {
       this.unitName = ``
