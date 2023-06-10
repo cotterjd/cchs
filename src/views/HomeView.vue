@@ -143,6 +143,7 @@ import {
   deleteUnitCode,
   submitBug,
   generateReport,
+  getUnit,
 } from '@/xhr'
 import { UnitCode, Bug } from '@/types'
 // import * as R from 'ramda'
@@ -227,13 +228,13 @@ export default defineComponent({
   watch: {
     async storageJob() {
       this.loading = true
-      // this.visibleCodes = this.getStorageCodes()
       this.getSavedCodes()
         .then(() => {
           this.loading = false
         })
         .catch(() => {
           this.loading = false
+          this.visibleCodes = this.getStorageCodes()
         })
     },
   },
@@ -262,7 +263,7 @@ export default defineComponent({
         ? this.chosenCodes.filter((x: string) => x !== code)
         : [...this.chosenCodes, code]
     },
-    onAddCodes() {
+    async onAddCodes() {
       if (!this.storageUser) return alert(`Please add your user.`)
       if (!this.storageJob) return alert(`Please add a job.`)
       if (!this.unitName) return alert(`Please add unit.`)
@@ -270,16 +271,33 @@ export default defineComponent({
         if (code.toLowerCase().includes(`other`)) return `${code} ${this.otherDesc}`
         return code
       })
-      // const existingCode = this.getUnitCode(this.unitName, this.storageJob)
-      this.saveCodes(codesToSave)
+      const existingCode = await getUnit(this.unitName, this.storageJob)
+      if (existingCode) {
+        const yes = window.confirm(`Unit code already exists. Are you sure you want to replace it?`)
+        if (yes) {
+          // TODO: make this not have duplicated popups
+          this.onDeleteCode(existingCode)
+          this.saveCodes(codesToSave)
+        }
+      } else {
+        this.saveCodes(codesToSave)
+      }
     },
     onDeleteCode(savedCode: UnitCode) {
+      if (this.offlineMode) return alert(`Cannot delete in Offline Mode.`)
+
+      // IDEA: this takes a long time to fail when offline.
+      // Maybe don't block UI and handle differently
+      this.loading = true
       const yes = window.confirm(`Are you sure you want to delete unit code ${savedCode.unit} ${savedCode.codes}?`)
       if (yes) {
         if (this.offlineMode) {
           this.removeUnitCode(savedCode)
         } else {
-          deleteUnitCode(savedCode.id as string).then(this.removeUnitCode)
+          deleteUnitCode(savedCode.id as string)
+            .then(this.removeUnitCode)
+            .catch(r => alert(`Unable to delete unit code. Make sure you have a connection and try again when you have a connection or call customer support at 405 919 4600`))
+            .finally(() => this.loading = false)
         }
       }
     },
@@ -290,7 +308,7 @@ export default defineComponent({
         .then((_: void | CreateResponse) => this.syncing = ``)
         .then(this.getSavedCodes)
         .catch((err) => {
-          alert(`Error syncing unit. You may still not have a connection. Please try again or contact support at 405 919 4600`)
+          alert(`Error syncing unit. You may still not have a connection. Please try again when you have a service or wifi or contact support at 405 919 4600`)
           this.syncing = ``
         })
     },
@@ -361,8 +379,9 @@ export default defineComponent({
       const savedCodes = this.offlineMode ? [] : await listUnitCodes(this.storageJob)
       const unsavedCodes = this.getStorageCodes()
 
+      // filter out unsaved codes that have saved counterparts
       const updatedUnsavedCodes = unsavedCodes
-        .filter(c => !savedCodes.find(sc => sc.unitName === c.unitName))
+        .filter(uc => !savedCodes.find(sc => sc.unit === uc.unit))
       localStorage.setItem(this.storageJob, JSON.stringify(updatedUnsavedCodes))
       const allCodes = [...savedCodes, ...updatedUnsavedCodes].sort(this.sortByCreatedAt)
       // R.pipe(
