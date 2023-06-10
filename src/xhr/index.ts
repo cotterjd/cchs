@@ -27,3 +27,11 @@ export const submitBug = (bug: Bug) => fetch(`${url}/support_email`, {
     'Content-Type': `application/json`,
   },
 }).then((r) => ({ success: r.status !== 500, bug }))
+
+export const generateReport = (job: string) => fetch(`${url}/report/${job}`, {
+  method: `POST`,
+  body: JSON.stringify({ job }),
+  headers: {
+    'Content-Type': `application/json`,
+  },
+}).then((r) => ({ success: r.status !== 500 }))

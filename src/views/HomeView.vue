@@ -142,9 +142,10 @@ import {
   saveUnitCodes,
   deleteUnitCode,
   submitBug,
+  generateReport,
 } from '@/xhr'
 import { UnitCode, Bug } from '@/types'
-import * as R from 'ramda'
+// import * as R from 'ramda'
 import SpacerBreak from '@/components/SpacerBreak.vue'
 import SavedCodesList from '@/components/SavedCodesList.vue'
 import { unserviced, servicedWithIssues, servicedNoIssues } from '@/static/codes'
@@ -359,6 +360,7 @@ export default defineComponent({
     async getSavedCodes() {
       const savedCodes = this.offlineMode ? [] : await listUnitCodes(this.storageJob)
       const unsavedCodes = this.getStorageCodes()
+
       const updatedUnsavedCodes = unsavedCodes
         .filter(c => !savedCodes.find(sc => sc.unitName === c.unitName))
       localStorage.setItem(this.storageJob, JSON.stringify(updatedUnsavedCodes))
@@ -397,6 +399,7 @@ export default defineComponent({
     syncUnsavedUnits() {
       this.loading = true
       const unsavedCodes = this.getStorageCodes()
+      const job: string = this.storageJob
       Promise.all(unsavedCodes.map(saveUnitCodes))
         .then(() => {
           localStorage.setItem(`job`, ``)
@@ -404,7 +407,14 @@ export default defineComponent({
           this.storageJob = ``
         })
         .then(this.getSavedCodes)
-        .catch((err) => alert(`Unable to end job. You have unsaved units and there was an error while trying to sync them. You may still not have a connection. Try again or contact support at 405 919 4600`))
+        .then(_ => generateReport(job))
+        .catch((err) => alert(`
+          Unable to end job.
+          You have unsaved units and there was an error while trying to sync them.
+          You may still not have a connection.
+          Try again or contact support at 405 919 4600.
+          Or submit a bug using the icon at the bottom of the screen next to the version number
+        `))
     },
     resetValues() {
       this.unitName = ``
