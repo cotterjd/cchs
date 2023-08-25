@@ -1,8 +1,9 @@
 import { createStore } from 'vuex'
 
+const packageJson = require(`../../package.json`)
 export default createStore({
   state: {
-    version: `0.7.0`,
+    version: packageJson.version,
   },
   getters: {
   },

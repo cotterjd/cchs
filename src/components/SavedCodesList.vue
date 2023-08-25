@@ -31,7 +31,7 @@ import ProgressSpinner from 'primevue/progressspinner'
 import Divider from 'primevue/divider'
 
 export default defineComponent({
-  props: [`codes`, `onSyncCode`, `syncing`],
+  props: [`codes`, `onSyncCode`, `syncing`, `onDeleteCode`],
   components: {
     ProgressSpinner,
     Divider,
