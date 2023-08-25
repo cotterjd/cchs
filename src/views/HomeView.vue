@@ -301,6 +301,8 @@ export default defineComponent({
             .catch(r => alert(`Unable to delete unit code. Make sure you have a connection and try again when you have a connection or call customer support at 405 919 4600`))
             .finally(() => this.loading = false)
         }
+      } else {
+        this.loading = false
       }
     },
     onSyncCode(code: UnitCode) {
