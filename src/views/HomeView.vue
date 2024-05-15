@@ -430,7 +430,7 @@ export default defineComponent({
           this.storageJob = ``
         })
         .then(this.getSavedCodes)
-        .then(_ => generateReport(job))
+        // .then(_ => generateReport(job)) generated reports aren't correct/used
         .catch((err) => alert(`Error ending job. Please try again or contact support at 405 919 4600`))
     },
     resetValues() {
